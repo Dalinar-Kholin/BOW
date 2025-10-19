@@ -1,0 +1,9 @@
+basicConstraints = CA:FALSE
+keyUsage = critical, digitalSignature, keyEncipherment
+extendedKeyUsage = serverAuth
+subjectAltName = @alt_names
+
+[alt_names]
+DNS.1 = nice1.local
+DNS.2 = myservice1.local
+IP.1  = 127.0.0.1
