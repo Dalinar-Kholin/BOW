@@ -19,6 +19,12 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+var clientCert = "/home/dalinarkholin/GolandProjects/BOW/list1/zad3/certs/client.crt"
+var clientKey = "/home/dalinarkholin/GolandProjects/BOW/list1/zad3/certs/client.key"
+var serverCert = "/home/dalinarkholin/GolandProjects/BOW/list1/zad3/certs/server.crt"
+var serverKey = "/home/dalinarkholin/GolandProjects/BOW/list1/zad3/certs/server.key"
+var caCert = "/home/dalinarkholin/GolandProjects/BOW/list1/zad3/certs/ca.crt"
+
 var Ports = []string{"8000", "8001", "8002"}
 
 var startChain = false
@@ -31,7 +37,7 @@ func main() {
 
 	go func(wg *sync.WaitGroup) {
 		wg.Add(1)
-		server.ListenAndServeTLS("/home/dalinarkholin/GolandProjects/BOW/list1/certs/service.crt", "/home/dalinarkholin/GolandProjects/BOW/list1/certs/serviceCert.key")
+		server.ListenAndServeTLS(serverCert, serverKey)
 	}(&wg)
 
 	for _, port := range Ports {
@@ -40,7 +46,7 @@ func main() {
 		}
 		client := makeClient()
 		for {
-			resp, err := client.Get(fmt.Sprintf("http://127.0.0.1:%s/healthz", port))
+			resp, err := client.Get(fmt.Sprintf("https://127.0.0.1:%s/healthz", port))
 			if err != nil {
 				continue
 			}
@@ -52,11 +58,16 @@ func main() {
 	fmt.Printf("Donen\n")
 	var start string
 	fmt.Scanf("%s", &start)
-	newPort := (slices.Index(Ports, myPort) + 1) % len(Ports)
+	startChain = true
+	newPort := Ports[(slices.Index(Ports, myPort)+1)%len(Ports)]
 	number := rand.Intn(100)
 	randomness := rand.Intn(100)
-	fmt.Printf("wylosowano := %s ", number)
-	makeClient().Get(fmt.Sprintf("http://127.0.0.1:%s/calc?calced=%s", newPort, number+randomness))
+	random = randomness
+	fmt.Printf("wylosowano := %d\n", number)
+	_, err := makeClient().Get(fmt.Sprintf("https://127.0.0.1:%s/calc?calced=%d", newPort, number+randomness))
+	if err != nil {
+		panic(err)
+	}
 
 	wg.Wait()
 }
@@ -90,17 +101,21 @@ func makeTLSServer() *http.Server {
 	// zaczynam z klienta 2 przesyła zapytanie do 3 calc z R + val następnie
 
 	r.GET("/getResult", func(c *gin.Context) {
+		fmt.Printf("obliczono wspólnie %s\n", c.Request.URL.Query().Get("calced"))
+	})
+
+	r.GET("/calc", func(c *gin.Context) {
 		if startChain {
 			data, _ := strconv.Atoi(c.Request.URL.Query().Get("calced"))
 			data -= random
-			fmt.Printf("obliczono wspólnie %s", data)
+			fmt.Printf("obliczono wspólnie %d\n", data)
 			for _, port := range Ports {
 				if port == myPort {
 					continue
 				}
 				client := makeClient()
 				for {
-					resp, err := client.Get(fmt.Sprintf("http://127.0.0.1:%s/calc?calced=%s", port, data))
+					resp, err := client.Get(fmt.Sprintf("https://127.0.0.1:%s/getResult?calced=%d", port, data))
 					if err != nil {
 						continue
 					}
@@ -109,21 +124,19 @@ func makeTLSServer() *http.Server {
 					}
 				}
 			}
+			startChain = false
+			random = 0
+			return
 		}
-
-		fmt.Printf("obliczono wspólnie %s", c.Request.URL.Query().Get("calced"))
-	})
-
-	r.GET("/calc", func(c *gin.Context) {
 		data, _ := strconv.Atoi(c.Request.URL.Query().Get("calced"))
 		requestRandom := rand.Intn(100)
-		fmt.Printf("random for this request := %v", requestRandom)
-		newPort := (slices.Index(Ports, myPort) + 1) % len(Ports)
-		makeClient().Get(fmt.Sprintf("http://127.0.0.1:%s/calc?calced=%d", newPort, requestRandom+data))
+		fmt.Printf("random for this request := %v\n", requestRandom)
+		newPort := Ports[(slices.Index(Ports, myPort)+1)%len(Ports)]
+		makeClient().Get(fmt.Sprintf("https://127.0.0.1:%s/calc?calced=%d", newPort, requestRandom+data))
 	})
 
-	srvCert, err := tls.LoadX509KeyPair("/home/dalinarkholin/GolandProjects/BOW/list1/certs/service.crt", "/home/dalinarkholin/GolandProjects/BOW/list1/certs/serviceCert.key")
-	caPEM := must(os.ReadFile("/home/dalinarkholin/GolandProjects/BOW/list1/certs/bow.inc.ca.crt"))
+	srvCert, err := tls.LoadX509KeyPair(clientCert, clientKey)
+	caPEM := must(os.ReadFile(caCert))
 	clientCAPool := x509.NewCertPool()
 	if !clientCAPool.AppendCertsFromPEM(caPEM) {
 		log.Fatal("append client CA failed")
@@ -175,7 +188,7 @@ func makeTLSServer() *http.Server {
 }
 
 func makeClient() *http.Client {
-	clientCert, err := tls.LoadX509KeyPair("/home/dalinarkholin/GolandProjects/BOW/list1/certs/service.crt", "/home/dalinarkholin/GolandProjects/BOW/list1/certs/serviceCert.key")
+	clientCert, err := tls.LoadX509KeyPair(clientCert, clientKey)
 	if err != nil {
 		log.Fatal("LoadX509KeyPair:", err)
 	}
