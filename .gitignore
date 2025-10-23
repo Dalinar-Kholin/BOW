@@ -1,0 +1,8 @@
+*.crt
+*.srl
+*.key
+*.pem
+config
+*.ext
+*.xml
+*.iml

@@ -31,7 +31,6 @@ func loadFirstCACert(pemBytes []byte) (*x509.Certificate, error) {
 		if block.Type == "CERTIFICATE" {
 			return x509.ParseCertificate(block.Bytes)
 		}
-		// skip non-certificate blocks (e.g., PRIVATE KEY, PKCS7, etc.)
 	}
 }
 
