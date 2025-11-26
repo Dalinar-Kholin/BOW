@@ -2,6 +2,7 @@ package PerfectHiding
 
 import (
 	"crypto/sha512"
+	"encoding/binary"
 	"math/big"
 
 	"github.com/EncEve/crypto/dh"
@@ -11,7 +12,7 @@ var grp = dh.RFC3526_2048() // p,g z RFC 3526, 2048-bit
 
 var p = grp.P
 var g = grp.G
-var q = big.NewInt(0).Div(big.NewInt(0).Sub(p, big.NewInt(1)), big.NewInt(2))
+var q = big.NewInt(0).Div(big.NewInt(0).Sub(p, big.NewInt(1)), big.NewInt(2)) // == (p - 1) /2
 
 func Commit(m, r string) *big.Int {
 	M := HashToScalar([]byte("m:" + m))
@@ -38,22 +39,39 @@ func Unpack(m, r string, C *big.Int) bool {
 }
 
 func deriveH() *big.Int {
-	sha := sha512.New()
-	// domena + parametry, ale NIE m,r
-	sha.Write([]byte("pedersen-h-generator"))
-	sha.Write(p.Bytes())
-	sha.Write(g.Bytes())
-	sum := sha.Sum(nil)
+	one := big.NewInt(1)
+	pMinusOneDivQ := new(big.Int).Div(new(big.Int).Sub(p, one), q) // (p-1)/q
 
-	// hash -> wykładnik w Z_q
-	e := new(big.Int).SetBytes(sum)
-	e.Mod(e, q)
-	if e.Sign() == 0 {
-		e.SetInt64(1)
+	var counter uint64
+	for {
+		sha := sha512.New()
+		sha.Write([]byte("pedersen-h-generator"))
+		sha.Write(p.Bytes())
+		sha.Write(g.Bytes())
+
+		var ctrBuf [8]byte
+		binary.BigEndian.PutUint64(ctrBuf[:], counter)
+		sha.Write(ctrBuf[:])
+
+		sum := sha.Sum(nil)
+
+		// 1. Hash -> losowy element [2, p-2]
+		t := new(big.Int).SetBytes(sum)
+		t.Mod(t, new(big.Int).Sub(p, one)) // t \in [0, p-2]
+		t.Add(t, one)                      // t \in [1, p-1]
+
+		// 2. Rzutowanie do podgrupy rzędu q
+		// h = t^((p-1)/q) mod p
+		// To jest standardowa metoda w Zp* na wylosowanie elementu z podgrupy
+		h := new(big.Int).Exp(t, pMinusOneDivQ, p)
+
+		// 3. Sprawdź, czy nie jest to element neutralny (tj. 1)
+		if h.Cmp(one) != 0 {
+			return h
+		}
+
+		counter++
 	}
-
-	h := new(big.Int).Exp(g, e, p)
-	return h
 }
 
 func HashToScalar(data []byte) *big.Int {
