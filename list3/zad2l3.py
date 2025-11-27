@@ -82,7 +82,7 @@ class FSI_Prover:
     def FSI_Prover_Step_1_Commit(self):
         self.r = [randomZnElement(self.n) for _ in range(self.len)]
         a = [((r ** 2) % self.n) for r in self.r]
-
+        # a = (self.r ** 2 * modinv(self.x, self.n)) % self.n if dishonest
         bits = sha512_first_x_bits_as_list(self.m + b''.join([(x %  100).to_bytes() for x in a]), self.len)
         y = [(self.r[i] * (self.y**int(bits[i]))) % self.n for i in range(len(self.r))]
         return a, y

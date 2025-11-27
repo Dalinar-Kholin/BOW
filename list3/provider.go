@@ -32,9 +32,23 @@ type ResultEncryptedNode struct {
 var mapa map[string]EncryptedGraph = make(map[string]EncryptedGraph)
 
 func GetEncryptedGraph() *EncryptedGraph {
+
 	colors := make([]byte, 3)
-	if _, err := rand.Read(colors); err != nil {
-		panic(err)
+	for {
+		if _, err := rand.Read(colors); err != nil {
+			panic(err)
+		}
+
+		if slices.Index(colors[1:], colors[0]) != -1 {
+			continue
+		}
+		if colors[0] == colors[1] || colors[2] == colors[1] {
+			continue
+		}
+		if slices.Index(colors[:2], colors[2]) != -1 {
+			continue
+		}
+		break
 	}
 
 	nonce := make([]byte, 64)
@@ -91,8 +105,6 @@ func GetColors(id1, id2 int, sha string) []ResultEncryptedNode {
 	}
 	node1 := graph.Nodes[slices.IndexFunc(graph.Nodes, func(g EncryptedNode) bool { return g.NodeId == id1 })]
 	node2 := graph.Nodes[slices.IndexFunc(graph.Nodes, func(g EncryptedNode) bool { return g.NodeId == id2 })]
-
-	delete(mapa, sha)
 
 	return []ResultEncryptedNode{
 		{node1.NodeId, node1.salt, node1.color, node1.edge},

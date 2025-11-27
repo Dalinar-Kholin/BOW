@@ -9,7 +9,6 @@ import (
 )
 
 func main() {
-	// Załaduj certyfikat + klucz klienta (prezentowany do serwera)
 	clientCert, err := tls.LoadX509KeyPair("../certs/service.crt", "../certs/serviceCert.key")
 	if err != nil {
 		log.Fatal("LoadX509KeyPair:", err)
@@ -25,7 +24,7 @@ func main() {
 	}
 	client := &http.Client{Transport: tr}
 
-	resp, err := client.Get("https://127.0.0.1/")
+	resp, err := client.Get("https://127.0.0.1:8000/")
 	if err != nil {
 		log.Fatal("GET:", err)
 	}
