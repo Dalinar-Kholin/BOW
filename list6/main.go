@@ -3,11 +3,15 @@ package main
 import (
 	"fmt"
 	"list6/PerfectHiding"
+	"list6/perfBinding"
 	"list6/zad2"
 )
 
 func main() {
 
+	perfBinding.Main()
+
+	return
 	zeros := 0
 	onces := 0
 	for i := 0; i < 1000; i++ {
