@@ -52,9 +52,9 @@ def check(n, x, a, e, b):
     return left == right
 
 def sha512_first_x_bits_as_list(data: bytes, x: int) -> list:
-    digest = hashlib.sha512(data).digest()            # 64 bytes = 512 bits
-    bitstr = ''.join(f'{b:08b}' for b in digest)      # big-endian bit order per byte
-    first100 = bitstr[:x]                           # first 100 characters '0'/'1'
+    digest = hashlib.sha512(data).digest()
+    bitstr = ''.join(f'{b:08b}' for b in digest)
+    first100 = bitstr[:x]
     return [int(b) for b in first100]
 
 class FSI_Prover:
